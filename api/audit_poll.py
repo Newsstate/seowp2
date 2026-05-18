@@ -1,7 +1,3 @@
-"""
-GET /api/audit_poll?job_id=xxx
-Returns: { status: "running"|"done"|"error", data?, name?, email?, message? }
-"""
 import json, os
 from urllib.parse import urlparse, parse_qs
 from http.server import BaseHTTPRequestHandler
@@ -19,7 +15,7 @@ def get_redis():
         return None
 
 
-def store_get(job_id: str):
+def store_get(job_id):
     r = get_redis()
     if not r:
         return None
@@ -39,7 +35,6 @@ class handler(BaseHTTPRequestHandler):
         record = store_get(job_id)
 
         if record is None:
-            # Not in Redis yet — job just started
             return self._json(200, {"status": "running"})
 
         self._json(200, record)
@@ -49,7 +44,7 @@ class handler(BaseHTTPRequestHandler):
         self._cors()
         self.end_headers()
 
-    def _json(self, code: int, data: dict):
+    def _json(self, code, data):
         body = json.dumps(data).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
