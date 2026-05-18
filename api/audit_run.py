@@ -1,9 +1,3 @@
-"""
-POST /api/audit_run
-Body: { job_id, url }
-Called internally by audit_start. Runs Claude AI audit, saves result to Redis.
-Set maxDuration: 300 in Vercel dashboard (Pro) or it uses 60s on Hobby.
-"""
 import json, os, re
 from http.server import BaseHTTPRequestHandler
 import anthropic
@@ -21,7 +15,7 @@ def get_redis():
         return None
 
 
-def store_set(job_id: str, value: dict):
+def store_set(job_id, value):
     r = get_redis()
     if r:
         r.set(f"seo:{job_id}", json.dumps(value), ex=3600)
@@ -81,7 +75,7 @@ Return ONLY this exact JSON (fill every field with real discovered data):
   },
   "geo": {
     "renderPct":"18%","renderOk":true,"renderDesc":"Low render % — good for LLM readability.",
-    "llmsTxt":true,"llmsTxtUrl":"https://example.com/llms.txt","llmsDesc":"llms.txt found — guides AI crawlers.",
+    "llmsTxt":true,"llmsTxtUrl":"https://example.com/llms.txt","llmsDesc":"llms.txt found.",
     "traffic":{"org":107,"paid":0,"ai":0},
     "kws":[{"kw":"brand keyword","co":"IN","pos":1,"vol":90,"tr":27},{"kw":"target phrase","co":"IN","pos":45,"vol":210,"tr":0}],
     "positions":[{"r":"Position 1","n":2},{"r":"Position 2-3","n":0},{"r":"Position 4-10","n":0},{"r":"Position 11-20","n":0},{"r":"Position 21-30","n":0},{"r":"Position 31-100","n":3}]
@@ -91,7 +85,7 @@ Return ONLY this exact JSON (fill every field with real discovered data):
     "cwvAdvice":"Core Web Vitals pass Google assessment.",
     "mob":{"score":35,"fcp":"9.5s","si":"9.5s","lcp":"16.3s","tti":"17.3s","tbt":"0.46s","cls":"0","opps":[{"n":"Reduce unused JavaScript","s":"4.84s"},{"n":"Avoid page redirects","s":"0.63s"}]},
     "desk":{"score":68,"fcp":"0.8s","si":"1.0s","lcp":"1.1s","tti":"3.9s","tbt":"0.65s","cls":"0.046","opps":[{"n":"Avoid page redirects","s":"0.19s"}]},
-    "viewport":true,"iframes":true,"iframesDesc":"iFrames detected — may hinder mobile UX.",
+    "viewport":true,"iframes":true,"iframesDesc":"iFrames detected.",
     "fontSizes":true,"tapTargets":true,"favicon":true,"emailPrivacy":true,"flash":false
   },
   "pf": {
@@ -110,35 +104,35 @@ Return ONLY this exact JSON (fill every field with real discovered data):
     {"name":"Instagram","url":"https://instagram.com/page","ico":"Ig","bg":"#E1306C","c":"#fff","linked":true,"stat":""},
     {"name":"LinkedIn","url":"https://linkedin.com/company/x","ico":"in","bg":"#0A66C2","c":"#fff","linked":true,"stat":""},
     {"name":"X/Twitter","url":"https://x.com/handle","ico":"X","bg":"#000","c":"#fff","linked":true,"stat":""},
-    {"name":"YouTube","url":"https://youtube.com/channel/x","ico":"▶","bg":"#FF0000","c":"#fff","linked":true,"stat":"195 subscribers · 285K views"}
+    {"name":"YouTube","url":"https://youtube.com/channel/x","ico":"▶","bg":"#FF0000","c":"#fff","linked":true,"stat":"195 subscribers"}
   ],
   "fbPixel":"835561506088336","fbPixelOk":true,
-  "ogTags":[{"t":"og:title","v":"Page Title"},{"t":"og:description","v":"Description"},{"t":"og:image","v":"https://example.com/img.jpg"},{"t":"og:type","v":"website"}],
+  "ogTags":[{"t":"og:title","v":"Title"},{"t":"og:description","v":"Desc"},{"t":"og:image","v":"https://example.com/img.jpg"}],
   "twitterCard":true,
-  "twitterTags":[{"t":"twitter:card","v":"summary_large_image"},{"t":"twitter:title","v":"Page Title"},{"t":"twitter:image","v":"https://example.com/img.jpg"}],
+  "twitterTags":[{"t":"twitter:card","v":"summary_large_image"},{"t":"twitter:title","v":"Title"}],
   "local":{
     "hasAddress":true,"phone":"+91 99715 44461","addr":"13 Sussex RD, Clifton NJ 07012",
     "localSchema":true,"schemaType":"LocalBusiness",
-    "gbp":{"found":true,"name":"Business Name — Location","addr":"Full address, City, Country","phone":"+91 99717 44661","site":"https://example.com/"},
+    "gbp":{"found":true,"name":"Business Name","addr":"Full address","phone":"+91 99717 44661","site":"https://example.com/"},
     "reviews":{"rating":4.7,"count":52,"dist":[45,4,0,2,1]}
   },
   "tech":{
-    "list":[{"name":"WordPress","ver":""},{"name":"Cloudflare","ver":""},{"name":"Google Analytics","ver":""},{"name":"Google Tag Manager","ver":""},{"name":"jQuery","ver":"3.7"}],
-    "dmarc":false,"dmarcDesc":"No DMARC record — add to DNS to prevent email spoofing.",
+    "list":[{"name":"WordPress","ver":""},{"name":"Cloudflare","ver":""},{"name":"Google Analytics","ver":""}],
+    "dmarc":false,"dmarcDesc":"No DMARC record — add to DNS.",
     "spf":true,"spfRecord":"v=spf1 include:_spf.google.com ~all",
     "server":"cloudflare","serverIp":"162.159.137.54","charset":"UTF-8","http2":true,"http3":false
   },
   "recommendations":[
-    {"priority":1,"title":"Fix specific issue","detail":"Specific actionable advice for this exact site."},
-    {"priority":2,"title":"Fix specific issue","detail":"Specific advice."},
-    {"priority":3,"title":"Fix specific issue","detail":"Specific advice."},
-    {"priority":4,"title":"Fix specific issue","detail":"Specific advice."},
-    {"priority":5,"title":"Fix specific issue","detail":"Specific advice."},
-    {"priority":6,"title":"Fix specific issue","detail":"Specific advice."}
+    {"priority":1,"title":"Issue title","detail":"Specific actionable advice for this site."},
+    {"priority":2,"title":"Issue title","detail":"Specific advice."},
+    {"priority":3,"title":"Issue title","detail":"Specific advice."},
+    {"priority":4,"title":"Issue title","detail":"Specific advice."},
+    {"priority":5,"title":"Issue title","detail":"Specific advice."},
+    {"priority":6,"title":"Issue title","detail":"Specific advice."}
   ]
 }
 
-IMPORTANT: Use REAL data found for this specific site. Return JSON ONLY."""
+IMPORTANT: Use REAL values found for this specific site. Return JSON ONLY."""
 
 
 class handler(BaseHTTPRequestHandler):
@@ -151,8 +145,9 @@ class handler(BaseHTTPRequestHandler):
             job_id = body.get("job_id", "")
             url    = body.get("url", "").strip()
 
-            api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-            client  = anthropic.Anthropic(api_key=api_key)
+            client = anthropic.Anthropic(
+                api_key=os.environ.get("ANTHROPIC_API_KEY", "")
+            )
 
             response = client.messages.create(
                 model="claude-sonnet-4-5",
@@ -176,7 +171,6 @@ class handler(BaseHTTPRequestHandler):
 
             data = json.loads(match.group(0))
 
-            # Read name/email stored by audit_start
             r      = get_redis()
             stored = {}
             if r:
@@ -191,13 +185,10 @@ class handler(BaseHTTPRequestHandler):
                 "email":  stored.get("email", "")
             })
 
-        except json.JSONDecodeError as e:
-            store_set(job_id, {"status": "error", "message": f"JSON parse error: {e}"})
         except Exception as e:
             if job_id:
                 store_set(job_id, {"status": "error", "message": str(e)})
 
-        # Always return 200 — errors are in Redis
         body = json.dumps({"ok": True}).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
