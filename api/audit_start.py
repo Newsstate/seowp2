@@ -1,16 +1,8 @@
-"""
-POST /api/audit_start
-Body: { url, name, email }
-Returns: { job_id }
-
-Stores job status in Upstash Redis, then fires audit_run asynchronously.
-"""
 import json, uuid, os, threading, urllib.request
 from http.server import BaseHTTPRequestHandler
 
 
 def get_redis():
-    """Return Upstash Redis client if env vars are set, else None."""
     url   = os.environ.get("UPSTASH_REDIS_REST_URL")
     token = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
     if not url or not token:
@@ -22,14 +14,13 @@ def get_redis():
         return None
 
 
-def store_set(job_id: str, value: dict):
+def store_set(job_id, value):
     r = get_redis()
     if r:
         r.set(f"seo:{job_id}", json.dumps(value), ex=3600)
 
 
-def fire_run(host: str, scheme: str, job_id: str, url: str):
-    """Call audit_run in a background thread so we return immediately."""
+def fire_run(host, scheme, job_id, url):
     try:
         run_url = f"{scheme}://{host}/api/audit_run"
         payload = json.dumps({"job_id": job_id, "url": url}).encode()
@@ -41,7 +32,7 @@ def fire_run(host: str, scheme: str, job_id: str, url: str):
         )
         urllib.request.urlopen(req, timeout=295)
     except Exception:
-        pass  # audit_run stores its own error in Redis
+        pass
 
 
 class handler(BaseHTTPRequestHandler):
@@ -60,7 +51,6 @@ class handler(BaseHTTPRequestHandler):
             job_id = str(uuid.uuid4())
             store_set(job_id, {"status": "running", "name": name, "email": email})
 
-            # Detect scheme + host for the callback URL
             host   = self.headers.get("Host", "localhost")
             scheme = "https" if ("vercel.app" in host or "localhost" not in host) else "http"
 
@@ -80,7 +70,7 @@ class handler(BaseHTTPRequestHandler):
         self._cors()
         self.end_headers()
 
-    def _json(self, code: int, data: dict):
+    def _json(self, code, data):
         body = json.dumps(data).encode()
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
