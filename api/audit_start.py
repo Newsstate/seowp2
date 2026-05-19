@@ -1,4 +1,9 @@
-import json, uuid, os, threading, urllib.request
+"""
+/api/audit_start  POST {url, name, email}
+Just validates input, creates job_id, saves to Redis, returns job_id.
+The frontend calls /api/audit_run directly as a separate long fetch.
+"""
+import json, uuid, os
 from http.server import BaseHTTPRequestHandler
 
 
@@ -20,21 +25,6 @@ def store_set(job_id, value):
         r.set(f"seo:{job_id}", json.dumps(value), ex=3600)
 
 
-def fire_run(host, scheme, job_id, url):
-    try:
-        run_url = f"{scheme}://{host}/api/audit_run"
-        payload = json.dumps({"job_id": job_id, "url": url}).encode()
-        req = urllib.request.Request(
-            run_url,
-            data=payload,
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
-        urllib.request.urlopen(req, timeout=295)
-    except Exception:
-        pass
-
-
 class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
@@ -51,16 +41,7 @@ class handler(BaseHTTPRequestHandler):
             job_id = str(uuid.uuid4())
             store_set(job_id, {"status": "running", "name": name, "email": email})
 
-            host   = self.headers.get("Host", "localhost")
-            scheme = "https" if ("vercel.app" in host or "localhost" not in host) else "http"
-
-            threading.Thread(
-                target=fire_run,
-                args=(host, scheme, job_id, url),
-                daemon=True
-            ).start()
-
-            self._json(200, {"job_id": job_id, "status": "running"})
+            self._json(200, {"job_id": job_id})
 
         except Exception as e:
             self._json(500, {"error": str(e)})
