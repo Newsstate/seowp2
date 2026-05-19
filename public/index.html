@@ -1122,7 +1122,8 @@ $('btn-start').onclick=()=>{
         }).catch(()=>{});
     },5000);
   })
-  .catch(err=>fail('Network error: '+err.message));
+.catch(err=>fail('Network error: '+err.message));
+};
 
 function doReset(){hide('page-report');hide('page-error');show('page-form');window.scrollTo(0,0);$('l-log').innerHTML='';$('pbar').style.width='0%';$('l-pct').textContent='0% complete';$('l-step').textContent='Initialising AI audit engine...'}
 $('btn-print').onclick=$('btn-print2').onclick=()=>window.print();
