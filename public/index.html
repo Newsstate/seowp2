@@ -1089,30 +1089,40 @@ $('btn-start').onclick=()=>{
     hide('page-loading');$('err-msg').textContent=msg||'An error occurred. Please try again.';show('page-error');$('btn-start').disabled=false;
   }
 
-  // 1 — Start the audit job
+// 1 — Create job_id in Redis via audit_start (fast, <2s)
   fetch('/api/audit_start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,name,email})})
   .then(r=>r.json())
   .then(({job_id,error})=>{
     if(error||!job_id) return fail(error||'Failed to start audit');
 
     const progressTimer=setInterval(tickStep,3000);
-    let attempts=0;
 
-    // 2 — Poll every 5 seconds
+    // 2 — Call audit_run directly (long-running, waits for result)
+    fetch('/api/audit_run',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({job_id,url})
+    }).catch(()=>{}); // fire and don't await — let poll pick up result
+
+    // 3 — Poll Redis every 5s for result
+    let attempts=0;
     pollTimer=setInterval(()=>{
       attempts++;
-      if(attempts>90){clearInterval(progressTimer);return fail('Audit timed out after 7 minutes. Please try again.');}
+      if(attempts>90){clearInterval(progressTimer);clearInterval(pollTimer);return fail('Audit timed out. Please try again.');}
       fetch(`/api/audit_poll?job_id=${job_id}`)
         .then(r=>r.json())
         .then(res=>{
-          if(res.status==='done'){clearInterval(progressTimer);done(res.data,res.name||name,res.email||email);}
-          else if(res.status==='error'){clearInterval(progressTimer);fail(res.message);}
-          // status==='running' → keep polling
+          if(res.status==='done'){
+            clearInterval(progressTimer);clearInterval(pollTimer);
+            done(res.data,res.name||name,res.email||email);
+          } else if(res.status==='error'){
+            clearInterval(progressTimer);clearInterval(pollTimer);
+            fail(res.message||'Audit failed. Please try again.');
+          }
         }).catch(()=>{});
     },5000);
   })
   .catch(err=>fail('Network error: '+err.message));
-};
 
 function doReset(){hide('page-report');hide('page-error');show('page-form');window.scrollTo(0,0);$('l-log').innerHTML='';$('pbar').style.width='0%';$('l-pct').textContent='0% complete';$('l-step').textContent='Initialising AI audit engine...'}
 $('btn-print').onclick=$('btn-print2').onclick=()=>window.print();
